@@ -1,88 +1,78 @@
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections;
 using UnityEngine;
 
 public class EnemySpawner : MonoBehaviour
 {
-    [Header("Instellingen")]
-    public GameObject Meteoor;           // Sleep hier de meteoor prefab in
-    public Transform Mars;               // Sleep hier het Mars-object in
-    public float enemySpeed = 3f;        // Snelheid van meteoren
-    public int numberOfEnemies = 5;      // Aantal meteoren dat gespawned wordt
+    [Header("Prefabs & Objecten")]
+    public GameObject meteoorPrefab;      // Sleep hier de Meteoor prefab in
+    public Transform marsTransform;       // Sleep hier het Mars object in
+
+    [Header("Spawn Instellingen")]
+    public float spawnDistanceFromMars = 20f;  // Afstand waar meteoren buiten Mars verschijnen
+    public float enemySpeed = 3f;               // Snelheid van de meteoren
+
+    [Header("Wave Instellingen")]
+    public int startingEnemiesPerWave = 5;      // Hoeveel enemies per wave bij start
+    public int enemiesIncreasePerWave = 2;      // Hoeveel enemies erbij elke wave
+    public float waveCooldown = 6f;              // Vaste cooldown tussen waves (in seconden)
+
+    private int currentWave = 0;
+    private int enemiesToSpawnThisWave;
+
+    private WaveUI waveUI; // Referentie naar UI script om wave te tonen
 
     void Start()
     {
-        if (Mars == null)
-        {
-            Debug.LogError("Mars is niet toegewezen in de Inspector!");
-            return;
-        }
+        waveUI = FindObjectOfType<WaveUI>(); // zoekt automatisch je WaveUI in de scene
+        StartCoroutine(WaveRoutine());
+    }
 
-        for (int i = 0; i < numberOfEnemies; i++)
+    IEnumerator WaveRoutine()
+    {
+        while (true)
         {
-            SpawnMeteoorJustOutsideCamera();
+            currentWave++;
+            enemiesToSpawnThisWave = startingEnemiesPerWave + enemiesIncreasePerWave * (currentWave - 1);
+
+            if (waveUI != null)
+                waveUI.UpdateWave(currentWave);
+
+            Debug.Log($"Wave {currentWave} gestart met {enemiesToSpawnThisWave} meteoren.");
+
+            // Spawn alle meteoren van deze wave
+            for (int i = 0; i < enemiesToSpawnThisWave; i++)
+            {
+                SpawnMeteoor();
+                Debug.Log($"Enemie wave{currentWave}");
+                yield return new WaitForSeconds(Random.Range(0.5f, 1f));
+            }
+
+            Debug.Log($"Wave {currentWave} afgerond. Cooldown {waveCooldown} seconden.");
+            yield return new WaitForSeconds(waveCooldown);
         }
     }
 
-    void SpawnMeteoorJustOutsideCamera()
+    void SpawnMeteoor()
     {
-        Camera cam = Camera.main;
+        Vector2 randomDir = Random.insideUnitCircle.normalized;
+        Vector3 spawnPos = marsTransform.position + (Vector3)(randomDir * spawnDistanceFromMars);
 
-        if (cam == null)
-        {
-            Debug.LogError("Er is geen camera met de tag 'MainCamera' in de scene!");
-            return;
-        }
+        GameObject meteoor = Instantiate(meteoorPrefab, spawnPos, Quaternion.identity);
 
-        float zDistance = Mathf.Abs(cam.transform.position.z);
+        // Richt meteoor naar Mars
+        Vector3 dirToMars = (marsTransform.position - meteoor.transform.position).normalized;
+        float angle = Mathf.Atan2(dirToMars.y, dirToMars.x) * Mathf.Rad2Deg;
+        meteoor.transform.rotation = Quaternion.Euler(0, 0, angle - 90);
 
-        // Bereken de wereldgrenzen van de camera
-        Vector3 bottomLeft = cam.ViewportToWorldPoint(new Vector3(0, 0, zDistance));
-        Vector3 topRight = cam.ViewportToWorldPoint(new Vector3(1, 1, zDistance));
-
-        // Spawnpositie buiten de camera
-        Vector3 spawnPos = Vector3.zero;
-
-        // Kies een rand willekeurig: links, rechts, boven of onder
-        int randEdge = Random.Range(0, 4);
-        switch (randEdge)
-        {
-            case 0: // Links
-                spawnPos.x = bottomLeft.x - 2f;
-                spawnPos.y = Random.Range(bottomLeft.y, topRight.y);
-                break;
-            case 1: // Rechts
-                spawnPos.x = topRight.x + 2f;
-                spawnPos.y = Random.Range(bottomLeft.y, topRight.y);
-                break;
-            case 2: // Boven
-                spawnPos.x = Random.Range(bottomLeft.x, topRight.x);
-                spawnPos.y = topRight.y + 2f;
-                break;
-            case 3: // Onder
-                spawnPos.x = Random.Range(bottomLeft.x, topRight.x);
-                spawnPos.y = bottomLeft.y - 2f;
-                break;
-        }
-
-        spawnPos.z = 0f; // Voor 2D zichtbaarheid
-
-        GameObject meteoor = Instantiate(Meteoor, spawnPos, Quaternion.identity);
-
-        // Richt naar Mars
-        Vector3 directionToMars = (Mars.position - spawnPos).normalized;
-        float angle = Mathf.Atan2(directionToMars.y, directionToMars.x) * Mathf.Rad2Deg;
-        meteoor.transform.rotation = Quaternion.Euler(0, 0, angle - 90); // Als de sprite omhoog kijkt
-
-        // Zorg dat de meteoor een EnemyMovement component heeft
+        // Initialiseert movement script
         EnemyMovement movement = meteoor.GetComponent<EnemyMovement>();
         if (movement != null)
         {
-            movement.Initialize(directionToMars, enemySpeed);
+            movement.Initialize(marsTransform, enemySpeed);
         }
         else
         {
-            Debug.LogError("EnemyMovement component ontbreekt op de Meteoor prefab!");
+            Debug.LogError("Geen EnemyMovement component gevonden op de meteoor prefab!");
         }
     }
 }

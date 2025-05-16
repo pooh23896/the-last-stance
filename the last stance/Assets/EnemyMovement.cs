@@ -1,18 +1,35 @@
 using UnityEngine;
 
+[RequireComponent(typeof(Rigidbody2D))]
 public class EnemyMovement : MonoBehaviour
 {
-    private Vector3 moveDirection;
-    private float moveSpeed;
+    private Rigidbody2D rb;
+    private Transform marsTransform;
+    private float speed;
 
-    public void Initialize(Vector3 direction, float speed)
+    void Awake()
     {
-        moveDirection = direction;
-        moveSpeed = speed;
+        rb = GetComponent<Rigidbody2D>();
     }
 
-    void Update()
+    public void Initialize(Transform mars, float moveSpeed)
     {
-        transform.position += moveDirection * moveSpeed * Time.deltaTime;
+        marsTransform = mars;
+        speed = moveSpeed;
+    }
+
+    void FixedUpdate()
+    {
+        if (marsTransform == null) return;
+
+        // Richting naar Mars
+        Vector2 directionToMars = (marsTransform.position - transform.position).normalized;
+
+        // Velocity instellen zodat de enemy naar Mars beweegt
+        rb.velocity = directionToMars * speed;
+
+        // Rotatie naar Mars
+        float angle = Mathf.Atan2(directionToMars.y, directionToMars.x) * Mathf.Rad2Deg;
+        rb.rotation = angle - 90;
     }
 }
