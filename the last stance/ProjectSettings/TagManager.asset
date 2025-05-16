@@ -8,10 +8,10 @@ TagManager:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - MainCamera
   - Water
   - UI
-  - 
+  - Meteoor
   - 
   - 
   - 
@@ -38,8 +38,8 @@ TagManager:
   - 
   - 
   m_SortingLayers:
-  - name: Default
-    uniqueID: 0
+  - name: Meteoor
+    uniqueID: 755274579
     locked: 0
   - name: Planeet
     uniqueID: 1171618471
@@ -49,4 +49,10 @@ TagManager:
     locked: 0
   - name: Turret
     uniqueID: 1933318059
+    locked: 0
+  - name: Default
+    uniqueID: 0
+    locked: 0
+  - name: New Layer 5
+    uniqueID: 3979670027
     locked: 0

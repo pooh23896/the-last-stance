@@ -5,17 +5,16 @@ using UnityEngine;
 public class EnemySpawner : MonoBehaviour
 {
     [Header("Instellingen")]
-    public GameObject Meteoor;       // Sleep hier je Meteoor prefab in
-    public Transform MarsObject;           // Doelobject (bijv. Mars in midden)
-    public float enemySpeed = 3f;    // Snelheid van meteoren
-    public int numberOfEnemies = 5;  // Hoeveel meteoren spawnen bij start
-    public float spawnOffset = 1f;   // Hoeveelheid buiten het scherm (in world units)
+    public GameObject Meteoor;           // Sleep hier de meteoor prefab in
+    public Transform Mars;               // Sleep hier het Mars-object in
+    public float enemySpeed = 3f;        // Snelheid van meteoren
+    public int numberOfEnemies = 5;      // Aantal meteoren dat gespawned wordt
 
     void Start()
     {
-        if (MarsObject == null)
+        if (Mars == null)
         {
-            Debug.LogError("Mars is NIET gekoppeld! Sleep het Mars-object naar het script in de Inspector.");
+            Debug.LogError("Mars is niet toegewezen in de Inspector!");
             return;
         }
 
@@ -29,47 +28,53 @@ public class EnemySpawner : MonoBehaviour
     {
         Camera cam = Camera.main;
 
-        // Bereken world-space grenzen van de camera
-        Vector3 bottomLeft = cam.ViewportToWorldPoint(new Vector3(0, 0, cam.nearClipPlane));
-        Vector3 topRight = cam.ViewportToWorldPoint(new Vector3(1, 1, cam.nearClipPlane));
+        if (cam == null)
+        {
+            Debug.LogError("Er is geen camera met de tag 'MainCamera' in de scene!");
+            return;
+        }
 
-        float minX = bottomLeft.x;
-        float maxX = topRight.x;
-        float minY = bottomLeft.y;
-        float maxY = topRight.y;
+        float zDistance = Mathf.Abs(cam.transform.position.z);
 
+        // Bereken de wereldgrenzen van de camera
+        Vector3 bottomLeft = cam.ViewportToWorldPoint(new Vector3(0, 0, zDistance));
+        Vector3 topRight = cam.ViewportToWorldPoint(new Vector3(1, 1, zDistance));
+
+        // Spawnpositie buiten de camera
         Vector3 spawnPos = Vector3.zero;
-        int edge = Random.Range(0, 4); // 0 = links, 1 = rechts, 2 = onder, 3 = boven
 
-        switch (edge)
+        // Kies een rand willekeurig: links, rechts, boven of onder
+        int randEdge = Random.Range(0, 4);
+        switch (randEdge)
         {
             case 0: // Links
-                spawnPos.x = minX - spawnOffset;
-                spawnPos.y = Random.Range(minY, maxY);
+                spawnPos.x = bottomLeft.x - 2f;
+                spawnPos.y = Random.Range(bottomLeft.y, topRight.y);
                 break;
             case 1: // Rechts
-                spawnPos.x = maxX + spawnOffset;
-                spawnPos.y = Random.Range(minY, maxY);
+                spawnPos.x = topRight.x + 2f;
+                spawnPos.y = Random.Range(bottomLeft.y, topRight.y);
                 break;
-            case 2: // Onder
-                spawnPos.x = Random.Range(minX, maxX);
-                spawnPos.y = minY - spawnOffset;
+            case 2: // Boven
+                spawnPos.x = Random.Range(bottomLeft.x, topRight.x);
+                spawnPos.y = topRight.y + 2f;
                 break;
-            case 3: // Boven
-                spawnPos.x = Random.Range(minX, maxX);
-                spawnPos.y = maxY + spawnOffset;
+            case 3: // Onder
+                spawnPos.x = Random.Range(bottomLeft.x, topRight.x);
+                spawnPos.y = bottomLeft.y - 2f;
                 break;
         }
 
-        // Instantieer de meteoor
+        spawnPos.z = 0f; // Voor 2D zichtbaarheid
+
         GameObject meteoor = Instantiate(Meteoor, spawnPos, Quaternion.identity);
 
-        // Richt op Mars
-        Vector3 directionToMars = (MarsObject.position - spawnPos).normalized;
+        // Richt naar Mars
+        Vector3 directionToMars = (Mars.position - spawnPos).normalized;
         float angle = Mathf.Atan2(directionToMars.y, directionToMars.x) * Mathf.Rad2Deg;
-        meteoor.transform.rotation = Quaternion.Euler(0, 0, angle - 90); // pas aan als je sprite anders gericht is
+        meteoor.transform.rotation = Quaternion.Euler(0, 0, angle - 90); // Als de sprite omhoog kijkt
 
-        // Initialiseer beweging
+        // Zorg dat de meteoor een EnemyMovement component heeft
         EnemyMovement movement = meteoor.GetComponent<EnemyMovement>();
         if (movement != null)
         {
@@ -77,7 +82,7 @@ public class EnemySpawner : MonoBehaviour
         }
         else
         {
-            Debug.LogError("EnemyMovement script ontbreekt op de Meteoor prefab!");
+            Debug.LogError("EnemyMovement component ontbreekt op de Meteoor prefab!");
         }
     }
 }
